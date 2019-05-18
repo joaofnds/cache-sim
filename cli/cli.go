@@ -48,9 +48,9 @@ func Operation() int {
 }
 
 // ParseNormalExecArgs parses command line args for the normal program execution
-func ParseNormalExecArgs(args []string) (*cache.Cache, []int32, error) {
+func ParseNormalExecArgs(args []string) (*cache.Cache, []uint32, error) {
 	var c *cache.Cache
-	var references []int32
+	var references []uint32
 	if len(args) != 3 {
 		return c, references, ErrBadArgNum
 	}
@@ -60,8 +60,9 @@ func ParseNormalExecArgs(args []string) (*cache.Cache, []int32, error) {
 		return c, references, err
 	}
 
-	fileName := args[2]
 	c = cache.BuildCache(sets, blockSize, assoc)
+
+	fileName := args[2]
 	f, err := os.Open(fileName)
 	if err != nil {
 		return c, references, err

@@ -18,12 +18,10 @@ const (
 func GenInputFile(f io.Writer) error {
 	rand.Seed(time.Now().Unix())
 
-	for _, bound := range [2]int32{10, 1000} {
-		for i := 0; i < 100; i++ {
-			err := binary.Write(f, binary.BigEndian, rand.Int31n(bound))
-			if err != nil {
-				return fmt.Errorf("failed to write integer to file: %f", err)
-			}
+	for i := 0; i < 100000; i++ {
+		err := binary.Write(f, binary.BigEndian, rand.Int31n(10000))
+		if err != nil {
+			return fmt.Errorf("failed to write integer to file: %f", err)
 		}
 	}
 
@@ -32,9 +30,9 @@ func GenInputFile(f io.Writer) error {
 
 // ParseInputFile parses an input file in the same format as the generated
 // output file, a binary file containing consecutive 32bit integers
-func ParseInputFile(r io.Reader) ([]int32, error) {
-	inputs := make([]int32, 0)
-	var n int32
+func ParseInputFile(r io.Reader) ([]uint32, error) {
+	inputs := make([]uint32, 0)
+	var n uint32
 	for {
 		err := binary.Read(r, binary.BigEndian, &n)
 		if err != nil {
