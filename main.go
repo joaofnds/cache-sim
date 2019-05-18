@@ -18,6 +18,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 			os.Exit(1)
 		}
+		fmt.Printf("'%s' generated!\n", file.DefaultFileName)
 		os.Exit(0)
 	case cli.NormalExecution:
 		err := normalExec()
