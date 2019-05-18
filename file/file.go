@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+const (
+	// DefaultFileName is the name of the generated input file
+	DefaultFileName = "input.dat"
+)
+
 // GenInputFile generates random input data
 func GenInputFile(f io.Writer) error {
 	rand.Seed(time.Now().Unix())
