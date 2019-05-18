@@ -32,7 +32,7 @@ func main() {
 }
 
 func genInputFile() error {
-	f, err := os.Create("input.dat")
+	f, err := os.Create(file.DefaultFileName)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %v", err)
 	}
