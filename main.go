@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -46,7 +45,7 @@ func genInputFile() error {
 }
 
 func normalExec() error {
-	c, ref, err := cli.ParseNormalExecArgs(os.Args)
+	c, refs, err := cli.ParseNormalExecArgs(os.Args)
 	if err != nil {
 		if err == cli.ErrBadArgNum {
 			cli.PrintUsage(os.Stdout)
@@ -54,12 +53,17 @@ func normalExec() error {
 		return err
 	}
 
-	b, err := json.Marshal(c)
-	if err != nil {
-		return fmt.Errorf("failed to parse cache to json: %v", err)
+	for i := 0; i < 2; i++ {
+		var hits, misses int
+		for _, ref := range refs {
+			if _, ok := c.Get(ref); ok {
+				hits++
+			} else {
+				misses++
+			}
+		}
+		fmt.Printf("run %d:\n\thits: %d\n\tmisses: %d\n", i, hits, misses)
 	}
-
-	fmt.Printf("references: %v\ncache: %v\n", ref, string(b))
 
 	return nil
 }
