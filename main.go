@@ -47,12 +47,8 @@ func genInputFile() error {
 func normalExec() error {
 	c, ref, err := cli.ParseNormalExecArgs(os.Args)
 	if err != nil {
-		switch err {
-		case cli.ErrBadCacheFormat:
-			fallthrough
-		case cli.ErrBadArgNum:
-			fmt.Println("Usage:")
-			fmt.Println("\tcache_sim <nsets>:<bsize>:<assoc> input_file")
+		if err == cli.ErrBadArgNum {
+			cli.PrintUsage(os.Stdout)
 		}
 		return err
 	}

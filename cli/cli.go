@@ -3,6 +3,7 @@ package cli
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
@@ -28,6 +29,11 @@ var (
 	// ErrBadCacheFormat is the error return when the cache format provided is wrong
 	ErrBadCacheFormat = fmt.Errorf("bad cache format. format is <nsets>:<bsize>:<assoc>")
 )
+
+// PrintUsage prints program usage to the provided io.Writer
+func PrintUsage(w io.Writer) (int, error) {
+	return fmt.Fprint(w, "Usage:\n\tcache_sim <nsets>:<bsize>:<assoc> input_file\n")
+}
 
 // Operation returns the operator to be performed by the program
 func Operation() int {
