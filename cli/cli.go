@@ -74,7 +74,7 @@ func ParseNormalExecArgs(args []string) (*cache.Cache, []int32, error) {
 func parseCacheConfig(s string) (sets, blockSize, assoc int, err error) {
 	matched := cliConfigRegexp.FindAllStringSubmatch(s, -1)
 	if matched == nil || len(matched[0]) != 4 {
-		err = ErrBadArgNum
+		err = ErrBadCacheFormat
 		return
 	}
 
