@@ -55,12 +55,13 @@ func ParseNormalExecArgs(args []string) (*cache.Cache, []uint32, error) {
 		return c, references, ErrBadArgNum
 	}
 
-	sets, blockSize, assoc, err := parseCacheConfig(args[1])
+	sets, blockSize, _, err := parseCacheConfig(args[1])
 	if err != nil {
 		return c, references, err
 	}
 
-	c = cache.BuildCache(sets, blockSize, assoc)
+	// TODO: use associativity instead of 1
+	c = cache.BuildCache(sets, blockSize)
 
 	fileName := args[2]
 	f, err := os.Open(fileName)
@@ -78,19 +79,20 @@ func ParseNormalExecArgs(args []string) (*cache.Cache, []uint32, error) {
 }
 
 // parseCacheConfig parses the cache config provided via command line
-func parseCacheConfig(s string) (sets, blockSize, assoc int, err error) {
+func parseCacheConfig(s string) (sets, blockSize, assoc uint32, err error) {
 	matched := cliConfigRegexp.FindAllStringSubmatch(s, -1)
 	if matched == nil || len(matched[0]) != 4 {
 		err = ErrBadCacheFormat
 		return
 	}
 
-	for k, v := range map[int]*int{1: &sets, 2: &blockSize, 3: &assoc} {
-		*v, err = strconv.Atoi(matched[0][k])
-		if err != nil {
+	for k, v := range map[int]*uint32{1: &sets, 2: &blockSize, 3: &assoc} {
+		n, e := strconv.Atoi(matched[0][k])
+		if e != nil {
 			err = ErrBadCacheFormat
 			return
 		}
+		*v = uint32(n)
 	}
 	return
 }

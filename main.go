@@ -56,7 +56,7 @@ func normalExec() error {
 	for i := 0; i < 2; i++ {
 		var hits, misses int
 		for _, ref := range refs {
-			if _, ok := c.Get(ref); ok {
+			if _, hit := c.Get(ref); hit {
 				hits++
 			} else {
 				misses++
