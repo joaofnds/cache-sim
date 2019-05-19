@@ -1,69 +1,90 @@
 package cache
 
-import "math/rand"
-
-const (
-	// ReplRandom is the random replacement strategy identifier
-	ReplRandom = iota
+import (
+	"math"
 )
 
-// Entry defines a cache entry
-type Entry struct {
-	Validity bool   `json:"validity"`
-	Ref      uint32 `json:"ref"`
-	Data     int32  `json:"data"`
+const (
+	// replRandom is the random replacement policy identifier
+	replRandom = iota
+
+	// ones an uint with the binary value full of ones, used to apply the index mask
+	ones = ^uint32(0)
+	// addressSize represents the bit length of memory addresses
+	addressSize = uint32(32)
+)
+
+type block struct {
+	validity bool
+	tag      uint32
+	data     int32
 }
 
 // Cache is the struct that defines represents a cache. It is configured
 // with a number of sets, block size and associativity.
 type Cache struct {
-	Sets                int      `json:"nsets"`
-	BlockSize           int      `json:"bsize"`
-	Associativity       int      `json:"assoc"`
-	ReplacementStrategy int      `json:"repl"`
-	Entries             []*Entry `json:"entries"`
+	cacheSize         uint32
+	numberOfSets      uint32
+	replacementPolicy uint8
+
+	setSize uint32
+	tagSize uint32
+
+	indexMask uint32
+
+	blocks []*block
 }
 
-// Set sets data to the cache
-func (c *Cache) Set(ref uint32, data int32) {
-	i := c.refIndex(ref)
-	entry := c.Entries[i]
-	entry.Validity = true
-	entry.Ref = ref
-	entry.Data = data
-}
+// BuildCache builds a new cache with the given number of blocks,
+// block size and associativity
+func BuildCache(cacheSize, numberOfSets uint32) *Cache {
+	// blocksPerSet := cacheSize / numberOfSets
 
-// Get retrieves data from the cache
-func (c *Cache) Get(ref uint32) (int32, bool) {
-	i := c.refIndex(ref)
-	entry := c.Entries[i]
-
-	if entry.Ref != ref {
-		newData := rand.Int31()
-		c.Set(ref, newData)
-		return newData, false
+	// directly mapped
+	blocks := make([]*block, numberOfSets)
+	for i := range blocks {
+		blocks[i] = &block{}
 	}
 
-	return entry.Data, true
-}
+	setSize := uint32(math.Log2(float64(numberOfSets)))
+	tagSize := addressSize - setSize
 
-func (c *Cache) refIndex(ref uint32) int {
-	return int(ref) % c.Sets
-}
-
-// BuildCache builds a new cache with the given sets, block size, associativity
-func BuildCache(sets, blockSize, associativity int) *Cache {
-	entries := make([]*Entry, sets)
-
-	for i := range entries {
-		entries[i] = &Entry{}
-	}
+	indexMask := ones ^ (ones << setSize)
 
 	return &Cache{
-		Sets:                sets,
-		BlockSize:           blockSize,
-		Associativity:       associativity,
-		ReplacementStrategy: ReplRandom,
-		Entries:             entries,
+		cacheSize:         cacheSize,
+		numberOfSets:      numberOfSets,
+		replacementPolicy: replRandom,
+		setSize:           setSize,
+		tagSize:           tagSize,
+		indexMask:         indexMask,
+		blocks:            blocks,
 	}
+}
+
+func (c *Cache) refSet(memoryReference uint32) uint32 {
+	return (memoryReference & c.indexMask)
+}
+
+func (c *Cache) refTag(memoryReference uint32) uint32 {
+	return (memoryReference >> c.setSize)
+}
+
+// Get retrieves data from the cache and inform if it was a hit or a miss
+func (c *Cache) Get(ref uint32) (int32, bool) {
+	index := c.refSet(ref)
+	tag := c.refTag(ref)
+	block := c.blocks[index]
+
+	if block.tag != tag || !block.validity {
+		// handle miss
+
+		block.tag = tag
+		block.data = int32(ref)
+		block.validity = true
+
+		return block.data, false
+	}
+
+	return block.data, true
 }
