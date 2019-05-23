@@ -6,6 +6,7 @@ import (
 
 	"github.com/joaofnds/cache-sim/cli"
 	"github.com/joaofnds/cache-sim/file"
+	"github.com/joaofnds/cache-sim/cache"
 )
 
 func main() {
@@ -56,7 +57,7 @@ func normalExec() error {
 	for i := 0; i < 2; i++ {
 		var hits, misses int
 		for _, ref := range refs {
-			if _, hit := c.Get(ref); hit {
+			if _, result := c.Get(ref); result == cache.Hit {
 				hits++
 			} else {
 				misses++

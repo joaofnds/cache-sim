@@ -8,6 +8,15 @@ const (
 	// replRandom is the random replacement policy identifier
 	replRandom = iota
 
+	// Hit indicates that the cache access was a hit
+	Hit = iota
+	// MissCompulsory indicates that the cache access had a compulsory miss
+	MissCompulsory
+	// MissCapacity indicates that the cache access had a capacity miss
+	MissCapacity
+	// MissConflict indicates that the cache access has a conflict miss
+	MissConflict
+
 	// ones an uint with the binary value full of ones, used to apply the index mask
 	ones = ^uint32(0)
 	// addressSize represents the bit length of memory addresses
@@ -71,20 +80,33 @@ func (c *Cache) refTag(memoryReference uint32) uint32 {
 }
 
 // Get retrieves data from the cache and inform if it was a hit or a miss
-func (c *Cache) Get(ref uint32) (int32, bool) {
+func (c *Cache) Get(ref uint32) (int32, int) {
 	index := c.refSet(ref)
 	tag := c.refTag(ref)
 	block := c.blocks[index]
+	hitOrMiss := accessResult(block, tag)
 
-	if block.tag != tag || !block.validity {
-		// handle miss
-
-		block.tag = tag
-		block.data = int32(ref)
-		block.validity = true
-
-		return block.data, false
+	if hitOrMiss != Hit {
+		handleMiss(block, ref, tag)
 	}
 
-	return block.data, true
+	return block.data, hitOrMiss
+}
+
+func handleMiss(block *block, ref, tag uint32) {
+	block.tag = tag
+	block.data = int32(ref)
+	block.validity = true
+}
+
+func accessResult(block *block, tag uint32) int {
+	if block.tag == 0 && !block.validity && block.data == 0 {
+		return MissCompulsory
+	}
+
+	if block.tag != tag {
+		return MissConflict
+	}
+
+	return Hit
 }
