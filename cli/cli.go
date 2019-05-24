@@ -55,13 +55,13 @@ func ParseNormalExecArgs(args []string) (*cache.Cache, []uint32, error) {
 		return c, references, ErrBadArgNum
 	}
 
-	sets, blockSize, _, err := parseCacheConfig(args[1])
+	sets, blockSize, assoc, err := parseCacheConfig(args[1])
 	if err != nil {
 		return c, references, err
 	}
 
 	// TODO: use associativity instead of 1
-	c = cache.BuildCache(sets, blockSize)
+	c = cache.BuildCache(sets, blockSize, assoc)
 
 	fileName := args[2]
 	f, err := os.Open(fileName)

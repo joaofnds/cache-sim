@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"time"
 )
 
 const (
@@ -16,8 +15,6 @@ const (
 
 // GenInputFile generates random input data
 func GenInputFile(f io.Writer) error {
-	rand.Seed(time.Now().Unix())
-
 	for i := 0; i < 100000; i++ {
 		err := binary.Write(f, binary.BigEndian, rand.Int31n(10000))
 		if err != nil {

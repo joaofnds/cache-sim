@@ -2,14 +2,18 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
+	"github.com/joaofnds/cache-sim/cache"
 	"github.com/joaofnds/cache-sim/cli"
 	"github.com/joaofnds/cache-sim/file"
-	"github.com/joaofnds/cache-sim/cache"
 )
 
 func main() {
+	rand.Seed(time.Now().Unix())
+
 	op := cli.Operation()
 	switch op {
 	case cli.GenerateData:

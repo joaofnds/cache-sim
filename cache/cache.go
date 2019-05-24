@@ -2,6 +2,7 @@ package cache
 
 import (
 	"math"
+	"math/rand"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 	// MissConflict indicates that the cache access has a conflict miss
 	MissConflict
 
-	// ones an uint with the binary value full of ones, used to apply the index mask
+	// ones is an uint with the binary value full of ones, used to apply the index mask
 	ones = ^uint32(0)
 	// addressSize represents the bit length of memory addresses
 	addressSize = uint32(32)
@@ -29,6 +30,67 @@ type block struct {
 	data     int32
 }
 
+type set struct {
+	indexSize uint32
+	tagSize   uint32
+	indexMask uint32
+	assoc     uint32
+	dataCount uint32
+	blocks    []*block
+}
+
+func (s *set) refSet(memoryReference uint32) uint32 {
+	return (memoryReference & s.indexMask)
+}
+
+func (s *set) refTag(memoryReference uint32) uint32 {
+	return (memoryReference >> s.indexSize)
+}
+
+func (s *set) insert(ref, tag uint32, index int) {
+	block := s.blocks[index]
+	block.tag = tag
+	block.data = int32(ref)
+	block.validity = true
+}
+
+func (s *set) handleMiss(ref, tag uint32) {
+	if s.dataCount < s.assoc {
+		// set with available spaces
+		for i, block := range s.blocks {
+			if !block.validity {
+				s.insert(ref, tag, i)
+				break
+			}
+		}
+		s.dataCount++
+	} else {
+		// set full
+		i := rand.Intn(int(s.assoc))
+		s.insert(ref, tag, i)
+	}
+}
+
+// Get retrieves data from the cache and inform if it was a hit or a miss
+func (s *set) get(ref uint32) (int32, int) {
+	tag := s.refTag(ref)
+
+	var block *block
+	for _, block = range s.blocks {
+		if block.tag == tag {
+			break
+		}
+	}
+
+	hitOrMiss := accessResult(block, tag)
+
+	if hitOrMiss != Hit {
+		s.handleMiss(ref, tag)
+	}
+
+	return block.data, hitOrMiss
+}
+
 // Cache is the struct that defines represents a cache. It is configured
 // with a number of sets, block size and associativity.
 type Cache struct {
@@ -36,67 +98,46 @@ type Cache struct {
 	numberOfSets      uint32
 	replacementPolicy uint8
 
-	setSize uint32
-	tagSize uint32
-
-	indexMask uint32
-
-	blocks []*block
+	sets []*set
 }
 
 // BuildCache builds a new cache with the given number of blocks,
 // block size and associativity
-func BuildCache(cacheSize, numberOfSets uint32) *Cache {
-	// blocksPerSet := cacheSize / numberOfSets
+func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
+	indexSize := uint32(math.Log2(float64(assoc)))
+	tagSize := addressSize - indexSize
+	indexMask := ones ^ (ones << indexSize)
 
-	// directly mapped
-	blocks := make([]*block, numberOfSets)
-	for i := range blocks {
-		blocks[i] = &block{}
+	sets := make([]*set, numberOfSets)
+	for i := range sets {
+		sets[i] = &set{
+			tagSize:   tagSize,
+			indexMask: indexMask,
+			assoc:     assoc,
+			dataCount: 0,
+		}
+
+		blocks := make([]*block, assoc)
+		for i := range blocks {
+			blocks[i] = &block{}
+		}
+
+		sets[i].blocks = blocks
 	}
-
-	setSize := uint32(math.Log2(float64(numberOfSets)))
-	tagSize := addressSize - setSize
-
-	indexMask := ones ^ (ones << setSize)
 
 	return &Cache{
-		cacheSize:         cacheSize,
+		cacheSize:         uint32(0),
 		numberOfSets:      numberOfSets,
 		replacementPolicy: replRandom,
-		setSize:           setSize,
-		tagSize:           tagSize,
-		indexMask:         indexMask,
-		blocks:            blocks,
+		sets:              sets,
 	}
-}
-
-func (c *Cache) refSet(memoryReference uint32) uint32 {
-	return (memoryReference & c.indexMask)
-}
-
-func (c *Cache) refTag(memoryReference uint32) uint32 {
-	return (memoryReference >> c.setSize)
 }
 
 // Get retrieves data from the cache and inform if it was a hit or a miss
 func (c *Cache) Get(ref uint32) (int32, int) {
-	index := c.refSet(ref)
-	tag := c.refTag(ref)
-	block := c.blocks[index]
-	hitOrMiss := accessResult(block, tag)
+	setIndex := ref % c.numberOfSets
 
-	if hitOrMiss != Hit {
-		handleMiss(block, ref, tag)
-	}
-
-	return block.data, hitOrMiss
-}
-
-func handleMiss(block *block, ref, tag uint32) {
-	block.tag = tag
-	block.data = int32(ref)
-	block.validity = true
+	return c.sets[setIndex].get(ref)
 }
 
 func accessResult(block *block, tag uint32) int {
