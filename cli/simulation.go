@@ -16,6 +16,8 @@ var (
 	ErrBadArgNum = fmt.Errorf("wrong number of arguments. Must be 3")
 	// ErrBadCacheFormat is the error return when the cache format provided is wrong
 	ErrBadCacheFormat = fmt.Errorf("bad cache format. format is <nsets>:<bsize>:<assoc>")
+	// ErrBadBlockSize is the error returned when the specified block size is wrong
+	ErrBadBlockSize = fmt.Errorf("bad block size. must be { 2^x | x >= 5 }")
 
 	cliConfigRegexp = regexp.MustCompile(`^(\d+):(\d+):(\d)$`)
 
@@ -74,5 +76,11 @@ func parseCacheConfig(s string) (sets, blockSize, assoc uint32, err error) {
 		}
 		*v = uint32(n)
 	}
+
+	if !cache.ValidBlockSize(blockSize) {
+		err = ErrBadBlockSize
+		return
+	}
+
 	return
 }

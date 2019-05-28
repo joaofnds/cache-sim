@@ -58,6 +58,7 @@ func runSimulation() error {
 		if err == cli.ErrBadArgNum {
 			cli.PrintSimulationUsage(os.Stdout)
 		}
+
 		return err
 	}
 

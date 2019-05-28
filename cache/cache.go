@@ -37,6 +37,9 @@ type Cache struct {
 	indexMask uint32
 	assoc     uint32
 
+	// block info
+	wordsPerBlock uint32
+
 	sets []*set
 }
 
@@ -46,6 +49,7 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 	indexSize := uint32(math.Log2(float64(assoc)))
 	tagSize := addressSize - indexSize
 	indexMask := ones ^ (ones << indexSize)
+	wordsPerBlock := blockSize / addressSize
 
 	sets := make([]*set, numberOfSets)
 	for i := range sets {
@@ -55,7 +59,9 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 
 		blocks := make([]*block, assoc)
 		for i := range blocks {
-			blocks[i] = &block{}
+			blocks[i] = &block{
+				data: make([]int32, wordsPerBlock),
+			}
 		}
 
 		sets[i].blocks = blocks
@@ -65,23 +71,26 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 		cacheSize:         uint32(0),
 		numberOfSets:      numberOfSets,
 		replacementPolicy: replRandom,
-		sets:              sets,
 
 		tagSize:   tagSize,
 		indexMask: indexMask,
 		assoc:     assoc,
+
+		wordsPerBlock: wordsPerBlock,
+
+		sets: sets,
 	}
 }
 
 // Get retrieves data from the cache and inform if it was a hit or a miss
 func (c *Cache) Get(ref uint32) (int32, int) {
-	setIndex := ref % c.numberOfSets
+	setIndex := (ref / c.wordsPerBlock) % c.numberOfSets
 
 	return c.getOnSet(c.sets[setIndex], ref)
 }
 
 func accessResult(block *block, tag uint32) int {
-	if block.tag == 0 && !block.validity && block.data == 0 {
+	if block.tag == 0 && !block.validity {
 		return MissCompulsory
 	}
 
@@ -108,7 +117,8 @@ func (c *Cache) handleMiss(set *set, ref, tag uint32) {
 		// set with available spaces
 		for i, block := range set.blocks {
 			if !block.validity {
-				set.insert(ref, tag, i)
+				data := c.retrieveFromLowerLevel(ref)
+				set.insert(i, tag, data)
 				break
 			}
 		}
@@ -116,13 +126,28 @@ func (c *Cache) handleMiss(set *set, ref, tag uint32) {
 	} else {
 		// set full
 		i := rand.Intn(int(c.assoc))
-		set.insert(ref, tag, i)
+		data := c.retrieveFromLowerLevel(ref)
+		set.insert(i, tag, data)
 	}
+}
+
+func (c *Cache) retrieveFromLowerLevel(ref uint32) []int32 {
+	data := make([]int32, c.wordsPerBlock)
+
+	lowerBound := int32(ref - (ref % c.wordsPerBlock))
+	upperBound := lowerBound + int32(c.wordsPerBlock)
+
+	for n := lowerBound; n < upperBound; n++ {
+		i := n % int32(c.wordsPerBlock)
+		data[i] = int32(n)
+	}
+
+	return data
 }
 
 // Get retrieves data from the cache and inform if it was a hit or a miss
 func (c *Cache) getOnSet(set *set, ref uint32) (int32, int) {
-	tag := c.refTag(ref)
+	tag := c.refTag(ref - (ref % c.wordsPerBlock))
 
 	var block *block
 	for _, block = range set.blocks {
@@ -137,5 +162,7 @@ func (c *Cache) getOnSet(set *set, ref uint32) (int32, int) {
 		c.handleMiss(set, ref, tag)
 	}
 
-	return block.data, hitOrMiss
+	data := block.get(ref)
+
+	return data, hitOrMiss
 }
