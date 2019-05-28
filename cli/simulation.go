@@ -42,7 +42,6 @@ func ParseSimulationArgs(args []string) (*cache.Cache, []uint32, error) {
 		return c, addresses, err
 	}
 
-	// TODO: use associativity instead of 1
 	c = cache.BuildCache(sets, blockSize, assoc)
 
 	fileName := args[2]
