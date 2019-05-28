@@ -24,84 +24,23 @@ const (
 	addressSize = uint32(32)
 )
 
-type block struct {
-	validity bool
-	tag      uint32
-	data     int32
-}
-
-type set struct {
-	indexSize uint32
-	tagSize   uint32
-	indexMask uint32
-	assoc     uint32
-	dataCount uint32
-	blocks    []*block
-}
-
-func (s *set) refSet(memoryReference uint32) uint32 {
-	return (memoryReference & s.indexMask)
-}
-
-func (s *set) refTag(memoryReference uint32) uint32 {
-	return (memoryReference >> s.indexSize)
-}
-
-func (s *set) insert(ref, tag uint32, index int) {
-	block := s.blocks[index]
-	block.tag = tag
-	block.data = int32(ref)
-	block.validity = true
-}
-
-func (s *set) handleMiss(ref, tag uint32) {
-	if s.dataCount < s.assoc {
-		// set with available spaces
-		for i, block := range s.blocks {
-			if !block.validity {
-				s.insert(ref, tag, i)
-				break
-			}
-		}
-		s.dataCount++
-	} else {
-		// set full
-		i := rand.Intn(int(s.assoc))
-		s.insert(ref, tag, i)
-	}
-}
-
-// Get retrieves data from the cache and inform if it was a hit or a miss
-func (s *set) get(ref uint32) (int32, int) {
-	tag := s.refTag(ref)
-
-	var block *block
-	for _, block = range s.blocks {
-		if block.tag == tag {
-			break
-		}
-	}
-
-	hitOrMiss := accessResult(block, tag)
-
-	if hitOrMiss != Hit {
-		s.handleMiss(ref, tag)
-	}
-
-	return block.data, hitOrMiss
-}
-
-// Cache is the struct that defines represents a cache. It is configured
+// Cache is the struct that represents a cache. It is configured
 // with a number of sets, block size and associativity.
 type Cache struct {
 	cacheSize         uint32
 	numberOfSets      uint32
 	replacementPolicy uint8
 
+	// set info
+	indexSize uint32
+	tagSize   uint32
+	indexMask uint32
+	assoc     uint32
+
 	sets []*set
 }
 
-// BuildCache builds a new cache with the given number of blocks,
+// BuildCache builds a new cache given the number of blocks,
 // block size and associativity
 func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 	indexSize := uint32(math.Log2(float64(assoc)))
@@ -111,9 +50,6 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 	sets := make([]*set, numberOfSets)
 	for i := range sets {
 		sets[i] = &set{
-			tagSize:   tagSize,
-			indexMask: indexMask,
-			assoc:     assoc,
 			dataCount: 0,
 		}
 
@@ -130,6 +66,10 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 		numberOfSets:      numberOfSets,
 		replacementPolicy: replRandom,
 		sets:              sets,
+
+		tagSize:   tagSize,
+		indexMask: indexMask,
+		assoc:     assoc,
 	}
 }
 
@@ -137,7 +77,7 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 func (c *Cache) Get(ref uint32) (int32, int) {
 	setIndex := ref % c.numberOfSets
 
-	return c.sets[setIndex].get(ref)
+	return c.getOnSet(c.sets[setIndex], ref)
 }
 
 func accessResult(block *block, tag uint32) int {
@@ -150,4 +90,52 @@ func accessResult(block *block, tag uint32) int {
 	}
 
 	return Hit
+}
+
+// refSet returns the set index of the given memoryReference
+func (c *Cache) refSet(memoryReference uint32) uint32 {
+	return (memoryReference & c.indexMask)
+}
+
+// refTag returns the tag of the given memoryReference
+func (c *Cache) refTag(memoryReference uint32) uint32 {
+	return (memoryReference >> c.indexSize)
+}
+
+// handleMiss "get the date" and insert it into the set
+func (c *Cache) handleMiss(set *set, ref, tag uint32) {
+	if set.dataCount < c.assoc {
+		// set with available spaces
+		for i, block := range set.blocks {
+			if !block.validity {
+				set.insert(ref, tag, i)
+				break
+			}
+		}
+		set.dataCount++
+	} else {
+		// set full
+		i := rand.Intn(int(c.assoc))
+		set.insert(ref, tag, i)
+	}
+}
+
+// Get retrieves data from the cache and inform if it was a hit or a miss
+func (c *Cache) getOnSet(set *set, ref uint32) (int32, int) {
+	tag := c.refTag(ref)
+
+	var block *block
+	for _, block = range set.blocks {
+		if block.tag == tag {
+			break
+		}
+	}
+
+	hitOrMiss := accessResult(block, tag)
+
+	if hitOrMiss != Hit {
+		c.handleMiss(set, ref, tag)
+	}
+
+	return block.data, hitOrMiss
 }
