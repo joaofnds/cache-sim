@@ -16,6 +16,8 @@ func main() {
 
 	op := cli.Operation()
 	switch op {
+	case cli.Help:
+		cli.PrintUsage(os.Stdout)
 	case cli.GenerateData:
 		err := genInputFile()
 		if err != nil {
@@ -23,16 +25,14 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Printf("'%s' generated!\n", file.DefaultFileName)
-		os.Exit(0)
-	case cli.NormalExecution:
-		err := normalExec()
+	case cli.RunSimulation:
+		err := runSimulation()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 			os.Exit(1)
 		}
-
-		os.Exit(0)
 	}
+	os.Exit(0)
 }
 
 func genInputFile() error {
@@ -42,18 +42,21 @@ func genInputFile() error {
 	}
 	defer f.Close()
 
-	if err := file.GenInputFile(f); err != nil {
+	s, n := cli.GenInputDataConfig()
+
+	fmt.Printf("generating input file with %d entries in [0,%d)\n", s, n)
+	if err := file.GenInputFile(f, s, n); err != nil {
 		return fmt.Errorf("failed to generate input file: %v", err)
 	}
 
 	return nil
 }
 
-func normalExec() error {
-	c, refs, err := cli.ParseNormalExecArgs(os.Args)
+func runSimulation() error {
+	c, refs, err := cli.ParseSimulationArgs(os.Args)
 	if err != nil {
 		if err == cli.ErrBadArgNum {
-			cli.PrintUsage(os.Stdout)
+			cli.PrintSimulationUsage(os.Stdout)
 		}
 		return err
 	}

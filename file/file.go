@@ -14,9 +14,9 @@ const (
 )
 
 // GenInputFile generates random input data
-func GenInputFile(f io.Writer) error {
-	for i := 0; i < 100000; i++ {
-		err := binary.Write(f, binary.BigEndian, rand.Int31n(10000))
+func GenInputFile(f io.Writer, size int, n int32) error {
+	for i := 0; i < size; i++ {
+		err := binary.Write(f, binary.BigEndian, rand.Int31n(n))
 		if err != nil {
 			return fmt.Errorf("failed to write integer to file: %f", err)
 		}
