@@ -1,3 +1,4 @@
+// Package cache implements the actual cache-sim cache
 package cache
 
 import (

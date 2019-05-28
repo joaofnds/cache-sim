@@ -1,3 +1,4 @@
+// Package cli defines the cache-sim cli interface
 package cli
 
 import (
