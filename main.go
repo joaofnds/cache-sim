@@ -53,7 +53,7 @@ func genInputFile() error {
 }
 
 func runSimulation() error {
-	c, refs, err := cli.ParseSimulationArgs(os.Args)
+	c, addresses, err := cli.ParseSimulationArgs(os.Args)
 	if err != nil {
 		if err == cli.ErrBadArgNum {
 			cli.PrintSimulationUsage(os.Stdout)
@@ -64,8 +64,8 @@ func runSimulation() error {
 
 	for i := 0; i < 2; i++ {
 		var hits, misses int
-		for _, ref := range refs {
-			if _, result := c.Get(ref); result == cache.Hit {
+		for _, address := range addresses {
+			if _, result := c.Get(address); result == cache.Hit {
 				hits++
 			} else {
 				misses++

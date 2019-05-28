@@ -27,19 +27,32 @@ const (
 // Cache is the struct that represents a cache. It is configured
 // with a number of sets, block size and associativity.
 type Cache struct {
-	cacheSize         uint32
-	numberOfSets      uint32
+	// cacheSize ...
+	cacheSize uint32
+	// numberOfSets ...
+	numberOfSets uint32
+	// replacementPolicy ...
 	replacementPolicy uint8
 
 	// set info
+
+	// indexSize number of bits needed to store the set index
 	indexSize uint32
-	tagSize   uint32
+	// tagSize number of bits needed to store the tag
+	tagSize uint32
+	// indexMask mask used to get the set index a memory address
 	indexMask uint32
-	assoc     uint32
+	// assoc degree of associativity
+	assoc uint32
 
 	// block info
-	wordsPerBlock uint32
 
+	// wordsPerBlock is the number of words stored in a blcok
+	wordsPerBlock uint32
+	// shiftMask is a mask used to get the index of a word in the block
+	shiftMask uint32
+
+	// sets are the actual sets in the cache
 	sets []*set
 }
 
@@ -50,6 +63,8 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 	tagSize := addressSize - indexSize
 	indexMask := ones ^ (ones << indexSize)
 	wordsPerBlock := blockSize / addressSize
+	shiftSize := uint32(math.Log2(float64(wordsPerBlock)))
+	shiftMask := ^shiftSize
 
 	sets := make([]*set, numberOfSets)
 	for i := range sets {
@@ -77,6 +92,7 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 		assoc:     assoc,
 
 		wordsPerBlock: wordsPerBlock,
+		shiftMask:     shiftMask,
 
 		sets: sets,
 	}
@@ -89,6 +105,8 @@ func (c *Cache) Get(ref uint32) (int32, int) {
 	return c.getOnSet(c.sets[setIndex], ref)
 }
 
+// accessResult checks if the access to the cache is a hit or a miss.
+// It also informs what kind of miss was it.
 func accessResult(block *block, tag uint32) int {
 	if block.tag == 0 && !block.validity {
 		return MissCompulsory
@@ -101,14 +119,15 @@ func accessResult(block *block, tag uint32) int {
 	return Hit
 }
 
-// refSet returns the set index of the given memoryReference
-func (c *Cache) refSet(memoryReference uint32) uint32 {
-	return (memoryReference & c.indexMask)
+// addressSet returns the set index of the given memory address
+func (c *Cache) addressSet(address uint32) uint32 {
+	return address & c.indexMask
 }
 
-// refTag returns the tag of the given memoryReference
-func (c *Cache) refTag(memoryReference uint32) uint32 {
-	return (memoryReference >> c.indexSize)
+// addressTag returns the tag of the given memory address
+func (c *Cache) addressTag(address uint32) uint32 {
+	blockAddress := address - (address % c.wordsPerBlock)
+	return blockAddress >> c.indexSize
 }
 
 // handleMiss "get the date" and insert it into the set
@@ -131,23 +150,25 @@ func (c *Cache) handleMiss(set *set, ref, tag uint32) {
 	}
 }
 
-func (c *Cache) retrieveFromLowerLevel(ref uint32) []int32 {
+// retrieveFromLowerLevel emulates the action of retrieving the
+// data from a lower memory in the hiearchy
+func (c *Cache) retrieveFromLowerLevel(memoryAddress uint32) []int32 {
 	data := make([]int32, c.wordsPerBlock)
 
-	lowerBound := int32(ref - (ref % c.wordsPerBlock))
-	upperBound := lowerBound + int32(c.wordsPerBlock)
+	blockStart := int32(memoryAddress - (memoryAddress % c.wordsPerBlock))
+	blockEnd := blockStart + int32(c.wordsPerBlock)
 
-	for n := lowerBound; n < upperBound; n++ {
-		i := n % int32(c.wordsPerBlock)
-		data[i] = int32(n)
+	for address := blockStart; address < blockEnd; address++ {
+		i := address % int32(c.wordsPerBlock)
+		data[i] = int32(address) // fake the retrieval by storing the address itself as the data
 	}
 
 	return data
 }
 
 // Get retrieves data from the cache and inform if it was a hit or a miss
-func (c *Cache) getOnSet(set *set, ref uint32) (int32, int) {
-	tag := c.refTag(ref - (ref % c.wordsPerBlock))
+func (c *Cache) getOnSet(set *set, address uint32) (int32, int) {
+	tag := c.addressTag(address)
 
 	var block *block
 	for _, block = range set.blocks {
@@ -159,10 +180,17 @@ func (c *Cache) getOnSet(set *set, ref uint32) (int32, int) {
 	hitOrMiss := accessResult(block, tag)
 
 	if hitOrMiss != Hit {
-		c.handleMiss(set, ref, tag)
+		c.handleMiss(set, address, tag)
 	}
 
-	data := block.get(ref)
+	data := c.getOnBlock(block, address)
 
 	return data, hitOrMiss
+}
+
+// getOnBlock retrieves the data from a block
+func (c *Cache) getOnBlock(b *block, address uint32) int32 {
+	index := int(address&c.shiftMask) % int(c.wordsPerBlock)
+
+	return b.data[index]
 }

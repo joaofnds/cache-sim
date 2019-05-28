@@ -32,14 +32,14 @@ func PrintSimulationUsage(w io.Writer) (int, error) {
 // ParseSimulationArgs parses command line args to run the simulation
 func ParseSimulationArgs(args []string) (*cache.Cache, []uint32, error) {
 	var c *cache.Cache
-	var references []uint32
+	var addresses []uint32
 	if len(args) != 3 {
-		return c, references, ErrBadArgNum
+		return c, addresses, ErrBadArgNum
 	}
 
 	sets, blockSize, assoc, err := parseCacheConfig(args[1])
 	if err != nil {
-		return c, references, err
+		return c, addresses, err
 	}
 
 	// TODO: use associativity instead of 1
@@ -48,16 +48,16 @@ func ParseSimulationArgs(args []string) (*cache.Cache, []uint32, error) {
 	fileName := args[2]
 	f, err := os.Open(fileName)
 	if err != nil {
-		return c, references, err
+		return c, addresses, err
 	}
 	defer f.Close()
 
-	references, err = file.ParseInputFile(f)
+	addresses, err = file.ParseInputFile(f)
 	if err != nil {
-		return c, references, err
+		return c, addresses, err
 	}
 
-	return c, references, nil
+	return c, addresses, nil
 }
 
 // parseCacheConfig parses the cache config provided via command line
