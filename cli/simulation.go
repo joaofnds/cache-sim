@@ -24,7 +24,7 @@ var (
 
 // PrintSimulationUsage prints program usage to the provided io.Writer
 func PrintSimulationUsage(w io.Writer) (int, error) {
-	return fmt.Fprintf(w, "Usage:\n\t%d\n", cacheFormatUsage)
+	return fmt.Fprintf(w, "Usage:\n\t%s\n", cacheFormatUsage)
 }
 
 // ParseSimulationArgs parses command line args to run the simulation
