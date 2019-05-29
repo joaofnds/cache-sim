@@ -50,8 +50,8 @@ type Cache struct {
 
 	// wordsPerBlock is the number of words stored in a blcok
 	wordsPerBlock uint32
-	// shiftMask is a mask used to get the index of a word in the block
-	shiftMask uint32
+	// offsetMask is a mask used to get the index of a word in the block
+	offsetMask uint32
 
 	// sets are the actual sets in the cache
 	sets []*set
@@ -64,8 +64,8 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 	tagSize := addressSize - indexSize
 	indexMask := ones ^ (ones << indexSize)
 	wordsPerBlock := blockSize / addressSize
-	shiftSize := uint32(math.Log2(float64(wordsPerBlock)))
-	shiftMask := ^shiftSize
+	offsetSize := uint32(math.Log2(float64(wordsPerBlock)))
+	offsetMask := ^offsetSize
 
 	sets := make([]*set, numberOfSets)
 	for i := range sets {
@@ -93,7 +93,7 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 		assoc:     assoc,
 
 		wordsPerBlock: wordsPerBlock,
-		shiftMask:     shiftMask,
+		offsetMask:    offsetMask,
 
 		sets: sets,
 	}
@@ -191,7 +191,7 @@ func (c *Cache) getOnSet(set *set, address uint32) (int32, int) {
 
 // getOnBlock retrieves the data from a block
 func (c *Cache) getOnBlock(b *block, address uint32) int32 {
-	index := int(address&c.shiftMask) % int(c.wordsPerBlock)
+	index := int(address&c.offsetMask) % int(c.wordsPerBlock)
 
 	return b.data[index]
 }

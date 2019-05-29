@@ -12,6 +12,6 @@ type block struct {
 
 // ValidBlockSize validates the cache block size
 func ValidBlockSize(n uint32) bool {
-	log := math.Log2(float64(n))
-	return log >= 5 && math.Mod(log, 1) == 0
+	bitSize := math.Log2(float64(n))
+	return n >= addressSize && math.Mod(bitSize, 1) == 0
 }
