@@ -11,6 +11,18 @@ import (
 	"github.com/joaofnds/cache-sim/file"
 )
 
+type report struct {
+	accesses,
+	hits,
+	compulsoryMisses,
+	capacityMisses,
+	conflictMisses int
+}
+
+func (r *report) totalMisses() int {
+	return r.compulsoryMisses + r.capacityMisses + r.conflictMisses
+}
+
 func main() {
 	rand.Seed(time.Now().Unix())
 
@@ -62,17 +74,34 @@ func runSimulation() error {
 		return err
 	}
 
-	for i := 0; i < 2; i++ {
-		var hits, misses int
-		for _, address := range addresses {
-			if _, result := c.Get(address); result == cache.Hit {
-				hits++
-			} else {
-				misses++
+	r := report{accesses: len(addresses)}
+	for _, address := range addresses {
+		_, result := c.Get(address)
+
+		if result == cache.Hit {
+			r.hits++
+		} else {
+			switch result {
+			case cache.MissCompulsory:
+				r.compulsoryMisses++
+			case cache.MissCapacity:
+				r.capacityMisses++
+			case cache.MissConflict:
+				r.conflictMisses++
 			}
 		}
-		fmt.Printf("run %d:\n\thits: %d\n\tmisses: %d\n", i, hits, misses)
 	}
 
+	printReport(r)
+
 	return nil
+}
+
+func printReport(r report) {
+	fmt.Printf("accesses: %d\n", r.accesses)
+	fmt.Printf("hits: %d\n", r.hits)
+	fmt.Printf("misses: %d\n", r.totalMisses())
+	fmt.Printf("compulsoryMisses: %d\n", r.compulsoryMisses)
+	fmt.Printf("capacityMisses: %d\n", r.capacityMisses)
+	fmt.Printf("conflictMisses: %d\n", r.conflictMisses)
 }
