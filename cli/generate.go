@@ -10,7 +10,7 @@ var (
 	genInputRange int32
 )
 
-// ParseGenInputDataConfig returns the input file config
+// GenInputDataConfig returns the input file config
 func GenInputDataConfig() (int, int32) {
 	return genInputSize, genInputRange
 }
