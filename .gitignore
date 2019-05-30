@@ -503,8 +503,8 @@ MigrationBackup/
 
 # End of https://www.gitignore.io/api/go,vim,emacs,linux,macos,windows,visualstudio
 
-# build binary
-cache-sim
+# build binaries
+cache-sim*
 
 # generated input file
 input.dat
