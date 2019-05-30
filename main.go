@@ -98,10 +98,20 @@ func runSimulation() error {
 }
 
 func printReport(r report) {
+	accessPercent := float64(r.accesses) / 100
+	misses := r.totalMisses()
+	missPercent := float64(misses) / 100
+
+	hitsPercentage := float64(r.hits) / accessPercent
+	missPercentage := float64(r.totalMisses()) / accessPercent
+	compulsoryPercentage := float64(r.compulsoryMisses) / missPercent
+	capacityPercentage := float64(r.capacityMisses) / missPercent
+	conflictPercentage := float64(r.conflictMisses) / missPercent
+
 	fmt.Printf("accesses: %d\n", r.accesses)
-	fmt.Printf("hits: %d\n", r.hits)
-	fmt.Printf("misses: %d\n", r.totalMisses())
-	fmt.Printf("compulsoryMisses: %d\n", r.compulsoryMisses)
-	fmt.Printf("capacityMisses: %d\n", r.capacityMisses)
-	fmt.Printf("conflictMisses: %d\n", r.conflictMisses)
+	fmt.Printf("hits: %d (%.2f%%)\n", r.hits, hitsPercentage)
+	fmt.Printf("misses: %d (%.2f%%)\n", misses, missPercentage)
+	fmt.Printf("compulsoryMisses: %d (%.f%%)\n", r.compulsoryMisses, compulsoryPercentage)
+	fmt.Printf("capacityMisses: %d (%.f%%)\n", r.capacityMisses, capacityPercentage)
+	fmt.Printf("conflictMisses: %d (%.f%%)\n", r.conflictMisses, conflictPercentage)
 }
