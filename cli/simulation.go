@@ -19,7 +19,7 @@ var (
 	// ErrBadBlockSize is the error returned when the specified block size is wrong
 	ErrBadBlockSize = fmt.Errorf("bad block size. must be { 2^x | x >= 5 }")
 
-	cliConfigRegexp = regexp.MustCompile(`^(\d+):(\d+):(\d)$`)
+	cliConfigRegexp = regexp.MustCompile(`^(\d+):(\d+):(\d+)$`)
 
 	cacheFormatUsage = "cache_sim <nsets>:<bsize>:<assoc> input_file"
 )
