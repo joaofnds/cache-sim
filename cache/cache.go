@@ -23,6 +23,8 @@ const (
 	ones = ^uint32(0)
 	// addressSize represents the bit length of memory addresses
 	addressSize = uint32(32)
+	// wordSize represents the bit length of a word
+	wordSize = uint32(8)
 )
 
 // Cache is the struct that represents a cache. It is configured
@@ -48,8 +50,8 @@ type Cache struct {
 
 	// block info
 
-	// wordsPerBlock is the number of words stored in a blcok
-	wordsPerBlock uint32
+	// blockSize is the number of words stored in a blcok
+	blockSize uint32
 	// offsetMask is a mask used to get the index of a word in the block
 	offsetMask uint32
 
@@ -63,8 +65,7 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 	indexSize := uint32(math.Log2(float64(assoc)))
 	tagSize := addressSize - indexSize
 	indexMask := ones ^ (ones << indexSize)
-	wordsPerBlock := blockSize / addressSize
-	offsetSize := uint32(math.Log2(float64(wordsPerBlock)))
+	offsetSize := uint32(math.Log2(float64(blockSize)))
 	offsetMask := ^offsetSize
 
 	sets := make([]*set, numberOfSets)
@@ -76,7 +77,7 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 		blocks := make([]*block, assoc)
 		for i := range blocks {
 			blocks[i] = &block{
-				data: make([]int32, wordsPerBlock),
+				data: make([]byte, blockSize),
 			}
 		}
 
@@ -92,16 +93,16 @@ func BuildCache(numberOfSets, blockSize, assoc uint32) *Cache {
 		indexMask: indexMask,
 		assoc:     assoc,
 
-		wordsPerBlock: wordsPerBlock,
-		offsetMask:    offsetMask,
+		blockSize:  blockSize,
+		offsetMask: offsetMask,
 
 		sets: sets,
 	}
 }
 
 // Get retrieves data from the cache and inform if it was a hit or a miss
-func (c *Cache) Get(ref uint32) (int32, int) {
-	setIndex := (ref / c.wordsPerBlock) % c.numberOfSets
+func (c *Cache) Get(ref uint32) (byte, int) {
+	setIndex := (ref / c.blockSize) % c.numberOfSets
 
 	return c.getOnSet(c.sets[setIndex], ref)
 }
@@ -127,7 +128,7 @@ func (c *Cache) addressSet(address uint32) uint32 {
 
 // addressTag returns the tag of the given memory address
 func (c *Cache) addressTag(address uint32) uint32 {
-	blockAddress := address - (address % c.wordsPerBlock)
+	blockAddress := address - (address % c.blockSize)
 	return blockAddress >> c.indexSize
 }
 
@@ -153,22 +154,22 @@ func (c *Cache) handleMiss(set *set, ref, tag uint32) {
 
 // retrieveFromLowerLevel emulates the action of retrieving the
 // data from a lower memory in the hiearchy
-func (c *Cache) retrieveFromLowerLevel(memoryAddress uint32) []int32 {
-	data := make([]int32, c.wordsPerBlock)
+func (c *Cache) retrieveFromLowerLevel(memoryAddress uint32) []byte {
+	data := make([]byte, c.blockSize)
 
-	blockStart := int32(memoryAddress - (memoryAddress % c.wordsPerBlock))
-	blockEnd := blockStart + int32(c.wordsPerBlock)
+	blockStart := int32(memoryAddress - (memoryAddress % c.blockSize))
+	blockEnd := blockStart + int32(c.blockSize)
 
 	for address := blockStart; address < blockEnd; address++ {
-		i := address % int32(c.wordsPerBlock)
-		data[i] = int32(address) // fake the retrieval by storing the address itself as the data
+		i := address % int32(c.blockSize)
+		data[i] = byte(address) // fake the retrieval by storing the address itself as the data
 	}
 
 	return data
 }
 
 // Get retrieves data from the cache and inform if it was a hit or a miss
-func (c *Cache) getOnSet(set *set, address uint32) (int32, int) {
+func (c *Cache) getOnSet(set *set, address uint32) (byte, int) {
 	tag := c.addressTag(address)
 
 	var block *block
@@ -190,8 +191,8 @@ func (c *Cache) getOnSet(set *set, address uint32) (int32, int) {
 }
 
 // getOnBlock retrieves the data from a block
-func (c *Cache) getOnBlock(b *block, address uint32) int32 {
-	index := int(address&c.offsetMask) % int(c.wordsPerBlock)
+func (c *Cache) getOnBlock(b *block, address uint32) byte {
+	index := int(address&c.offsetMask) % int(c.blockSize)
 
 	return b.data[index]
 }

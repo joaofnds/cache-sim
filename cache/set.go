@@ -5,7 +5,7 @@ type set struct {
 	blocks    []*block
 }
 
-func (s *set) insert(index int, tag uint32, data []int32) {
+func (s *set) insert(index int, tag uint32, data []byte) {
 	block := s.blocks[index]
 	block.tag = tag
 	block.data = data // fake the data using the memory address as value
